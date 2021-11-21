@@ -164,7 +164,7 @@ Conusmer消费消息的时候同样从NameServer获取Broker地址，然后主�
 
 ## Broker、NameServer、Producer和Comsumer之间的关系：  
 从 Broker 开始，Broker Master1 和 Broker Slave1 是主从结构，它们之间会进行数据同步，即 Date Sync。同时每个 Broker 与NameServer 集群中的所有节点建立长连接，定时注册 Topic 信息到所有 NameServer 中。
-	Producer 与 NameServer 集群中的其中一个节点（随机选择）建立长连接，定期从 NameServer 获取 Topic 路由信息，并向提供 Topic 服务的 Broker Master 建立长连接，且定时向 Broker 发送心跳。Producer 只能将消息发送到 Broker master，但是 Consumer 则不一样，它同时和提供 Topic 服务的 Master 和 Slave建立长连接，既可以从 Broker Master 订阅消息，也可以从 Broker Slave 订阅消息。
+Producer 与 NameServer 集群中的其中一个节点（随机选择）建立长连接，定期从 NameServer 获取 Topic 路由信息，并向提供 Topic 服务的 Broker Master 建立长连接，且定时向 Broker 发送心跳。Producer 只能将消息发送到 Broker master，但是 Consumer 则不一样，它同时和提供 Topic 服务的 Master 和 Slave建立长连接，既可以从 Broker Master 订阅消息，也可以从 Broker Slave 订阅消息。
 ## RocketMQ的事务设计：  
 应用模块遇到要发送事务消息的场景时，先发送prepare消息给MQ。  
 prepare消息发送成功后，应用模块执行数据库事务（本地事务）。  
@@ -228,13 +228,13 @@ public class Consumer implements RocketMQListener<String>{
 
 # Kafka的个人理解和总结
 
-## kafka是一个提供统一的、高吞吐、低延迟的，用来处理实时数据的流式平台，它具备以下三特性：
-### 1.流式记录的发布和订阅：类似于消息系统。
-### 2存储：在一个分布式、容错的集群中安全持久化地存储流式数据。
-### 3处理：编写流处理应用程序，对实时事件进行响应。
+## kafka是一个提供统一的、高吞吐、低延迟的，用来处理实时数据的流式平台，它具备以下三特性：	
+#### 1.流式记录的发布和订阅：类似于消息系统。
+#### 2存储：在一个分布式、容错的集群中安全持久化地存储流式数据。
+#### 3处理：编写流处理应用程序，对实时事件进行响应。
 	
 ## Kafka的设计原理：
-kafka中是以Topic机制来对消息进行分类的，同一类消息属于同一个Topic，可以将每个Topic看成是一个消息队列。生产者将消息发送到相应的Topic，而消费者通过从Topic拉取消息来消费，在kafka中是要求消费者主动拉取消息消费的，它并不会主动推送消息。
+  kafka中是以Topic机制来对消息进行分类的，同一类消息属于同一个Topic，可以将每个Topic看成是一个消息队列。生产者将消息发送到相应的Topic，而消费者通过从Topic拉取消息来消费，在kafka中是要求消费者主动拉取消息消费的，它并不会主动推送消息。
 Partition分区，每个topic可以有多个分区，这是kafka为了提高并发量而设计的一种机制：一个topic下的多个分区可以并发接收消息，同样的也能供消费者并发拉取消息，即分区之间互不干扰，这样的话，有多少个分区就可以有多大的并发量。所以，如果要更准确的打比方，一个分区就是一个消息队列，只不过这些消息队列同属于一种消息分类。
 	
 在kafka服务器，分区是以目录形式存在的，每个分区目录中，kafka会按配置大小或配置周期将分区拆分成多个段文件(LogSegment), 每个段由三部分组成：
@@ -248,18 +248,19 @@ Partition分区，每个topic可以有多个分区，这是kafka为了提高并�
 
 
 ## kafka的查询机制：
-Kafka不会在消费者拉取完消息后马上就清理消息，而是会保存段文件一段时间，直到其过期再标记为可清理，由后台程序定期进行清理。这种机制使得消费者可以重复消费消息，满足更灵活的需求。
+  Kafka不会在消费者拉取完消息后马上就清理消息，而是会保存段文件一段时间，直到其过期再标记为可清理，由后台程序定期进行清理。这种机制使得消费者可以重复消费消息，满足更灵活的需求。
 kafka虽然作为消息系统，但是消费消息并不是通过推送而是通过拉取来消费的，client需要通过offset和size参数主动去查询消息。
-kafka收到客户端请求后，对消息的寻址会经过下面几个步骤:
-### 1.查找具体的Log Segment，kafka将段信息缓存在跳跃表中，所以这个步骤将从跳跃表中获取段信息。
-### 2.根据offset在index文件中进行定位，找到匹配范围的偏移量position，此时得到的是一个近似起始文件偏移量。
-### 3.从Log文件的position位置处开始往后寻找，直到找到offset处的消息。
+	
+### kafka收到客户端请求后，对消息的寻址会经过下面几个步骤:
+#### 1.查找具体的Log Segment，kafka将段信息缓存在跳跃表中，所以这个步骤将从跳跃表中获取段信息。
+#### 2.根据offset在index文件中进行定位，找到匹配范围的偏移量position，此时得到的是一个近似起始文件偏移量。
+#### 3.从Log文件的position位置处开始往后寻找，直到找到offset处的消息。
 
 
 
 ## Kafka的两大应用：
-### 1.建立实时流数据管道，在系统或应用之间实时地传输数据。
-### 2.构建对数据流进行转换和处理的实时流应用程序。
+#### 1.建立实时流数据管道，在系统或应用之间实时地传输数据。
+#### 2.构建对数据流进行转换和处理的实时流应用程序。
  
 
 
@@ -286,9 +287,11 @@ private KafkaTemplate kafkaTemplate;
 	
 ### 消费者消费消息：
 
-public class UserLogConsumer {  
+public class UserLogConsumer {   
+	
     @KafkaListener(topics = {"user-log"})  
     public void consumer(ConsumerRecord<?,?> consumerRecord){  
+	
         //判断是否为null  
         Optional<?> kafkaMessage = Optional.ofNullable(consumerRecord.value());  
         log.info(">>>>>>>>>> record =" + kafkaMessage);  
